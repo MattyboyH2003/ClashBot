@@ -141,3 +141,15 @@ async def IsInt(item : str):
             validInt = False
     
     return validInt
+
+# Return league ID from player data
+def GetLeagueID(playerData : dict):
+    leagues = ["Unranked", "Bronze", "Silver", "Gold", "Crystal", "Master", "Champion", "Titan"]
+
+    if "league" in list(playerData.keys()):
+        playerLeagueFull = playerData["league"]["name"]
+        for idx, league in enumerate(leagues):
+            if league in playerLeagueFull:
+                return idx
+
+    return 0 # Unranked or some other error that should'ntv'e happened also how do you spell should''nt'v'e ; Like This --> Shouldn't've :) ; thank you smile :)

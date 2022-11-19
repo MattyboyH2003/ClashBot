@@ -15,20 +15,71 @@ bot.remove_command("help")
 with open("tokens.json", "r") as tokenfile:
     tokens = json.loads(tokenfile.read())
 
+with open("BotAdmins.json", "r") as adminFile:
+    admins = json.loads(adminFile.read())
 
-############################
-# - async base functions - #
-############################
 
-async def _getMembers(msg):
-    message = ""
+##############################
+# - Command Base Functions - #
+##############################
+
+async def _getMembers(msg : discord.Message):
+    emojisDict = {
+        "wo0"       : "<:wo0:1043539783357579264>",
+        "wo1"       : "<:wo1:1043539784926248960>",
+        "cw0"       : "<:cw0:1043476284770099240>",
+        "cw1"       : "<:cw1:1043476286112272414>",
+        "cg0"       : "<:cg0:1043476282136084520>",
+        "cg1"       : "<:cg1:1043476283381780610>",
+        "cc0"       : "<:cc0:1043476279061643274>",
+        "cc1"       : "<:cc1:1043476280630325289>",
+        "coctrophy" : "<:coctrophy:1043481716490244128>",
+        "townhall"  : "<:townhall:1043483318215254078>",
+        "activity"  : "<:activity:1043484073462607984>",
+        "tl0"       : "<:tl0:1043539822976966706>",
+        "tl1"       : "<:tl1:1043539824205910118>",
+        "tl2"       : "<:tl2:1043539825736810638>",
+        "tl3"       : "<:tl3:1043539827041255484>",
+        "tl4"       : "<:tl4:1043539828173705238>",
+        "tl5"       : "<:tl5:1043539829838839909>",
+        "tl6"       : "<:tl6:1043539831495598130>",
+        "tl7"       : "<:tl7:1043539832753889290>",
+        "tl8"       : "<:tl8:1043539834003800064>"
+    }
     
     clan = DatabaseTools.GetPrimaryClan(msg.guild.id)
     members = ClashInterface.GetMembers(tokens["CoC"]["token"], clan)
+
+    fullMemberDetails = {}
+
     for member in members:
-        message += f"{member['name']}\n"
+        memberInfo = {}
+        memberInfo["BasicInfo"] = member
+        memberInfo["ProfileInfo"] = ClashInterface.GetPlayerInfo(tokens["CoC"]["token"], member["tag"].replace("#", ""))
+
+        fullMemberDetails[member["name"]] = memberInfo
     
-    await msg.channel.send(message)
+    # Calculates how man embeds are needed
+    totalMessages = len(list(fullMemberDetails.keys()))//10 + bool(len(list(fullMemberDetails.keys()))%10)
+
+    # Creates a list of however many embeds needed
+    messages = ["" for _ in range(totalMessages)]
+
+    for index, memberName in enumerate(list(fullMemberDetails.keys())):
+        messageSegment = "> "
+        messageSegment += emojisDict["wo1"] if fullMemberDetails[memberName]["ProfileInfo"]["warPreference"] == "in" else emojisDict["wo0"]
+        messageSegment += " `|` "
+        messageSegment += emojisDict["cw1"]
+        messageSegment += emojisDict["cg1"]
+        messageSegment += emojisDict["cc1"]
+        messageSegment += " `|` "
+        messageSegment += emojisDict["tl" + str(GeneralUtils.GetLeagueID(fullMemberDetails[memberName]["ProfileInfo"]))]
+        messageSegment += " " + memberName
+
+        messages[index//10] += messageSegment + "\n"
+
+    for message in messages:
+        await msg.channel.send(message)
 
 async def _getClanInfo(msg):
     clan = DatabaseTools.GetPrimaryClan(msg.guild.id)
@@ -232,6 +283,7 @@ async def _linkClan(msg : discord.Message, clanID):
     else:
         await msg.send("Only administrators can run this command")
 
+
 ########################
 # - General Commands - #
 ########################
@@ -342,6 +394,10 @@ async def updateMembers(msg, *args):
 async def linkClan(msg, *args):
     await _linkClan(msg, args[0])
 
+@bot.command()
+async def getEmojis(msg, *args):
+    if msg.author.id in [admins[adminName]["id"] for adminName in list(admins.keys())]:
+        print(await msg.guild.fetch_emojis())
 
 ############################
 # - @bot.event functions - #
@@ -371,3 +427,39 @@ async def on_ready(): # Function that runs when bot goes online
     await bot.tree.sync()
 
 bot.run(tokens["Discord"]["token"]) # Run the bot
+
+
+"""
+Emojis:
+[
+    <Emoji id=1023940188491239444 name='clanbadge' animated=False managed=False>, 
+    <Emoji id=1032958637678792704 name='c000' animated=False managed=False>, 
+    <Emoji id=1032958645794775141 name='c001' animated=False managed=False>, 
+    <Emoji id=1032958656607694909 name='c010' animated=False managed=False>, 
+    <Emoji id=1032958665554141205 name='c011' animated=False managed=False>, 
+    <Emoji id=1032958673036783667 name='c100' animated=False managed=False>, 
+    <Emoji id=1032958679311454248 name='c101' animated=False managed=False>, 
+    <Emoji id=1032958686206885888 name='c110' animated=False managed=False>, 
+    <Emoji id=1032958693832151130 name='c111' animated=False managed=False>, 
+    <Emoji id=1043476279061643274 name='cc0' animated=False managed=False>, 
+    <Emoji id=1043476280630325289 name='cc1' animated=False managed=False>, 
+    <Emoji id=1043476282136084520 name='cg0' animated=False managed=False>, 
+    <Emoji id=1043476283381780610 name='cg1' animated=False managed=False>, 
+    <Emoji id=1043476284770099240 name='cw0' animated=False managed=False>, 
+    <Emoji id=1043476286112272414 name='cw1' animated=False managed=False>, 
+    <Emoji id=1043481716490244128 name='coctrophy' animated=False managed=False>, 
+    <Emoji id=1043483318215254078 name='townhall' animated=False managed=False>, 
+    <Emoji id=1043484073462607984 name='activity' animated=False managed=False>, 
+    <Emoji id=1043539783357579264 name='wo0' animated=False managed=False>, 
+    <Emoji id=1043539784926248960 name='wo1' animated=False managed=False>, 
+    <Emoji id=1043539822976966706 name='tl0' animated=False managed=False>, 
+    <Emoji id=1043539824205910118 name='tl1' animated=False managed=False>, 
+    <Emoji id=1043539825736810638 name='tl2' animated=False managed=False>, 
+    <Emoji id=1043539827041255484 name='tl3' animated=False managed=False>, 
+    <Emoji id=1043539828173705238 name='tl4' animated=False managed=False>, 
+    <Emoji id=1043539829838839909 name='tl5' animated=False managed=False>, 
+    <Emoji id=1043539831495598130 name='tl6' animated=False managed=False>, 
+    <Emoji id=1043539832753889290 name='tl7' animated=False managed=False>, 
+    <Emoji id=1043539834003800064 name='tl8' animated=False managed=False>
+]
+"""

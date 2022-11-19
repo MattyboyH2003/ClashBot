@@ -95,4 +95,11 @@ CREATE TABLE ServerClansLink (
     ServerID INTEGER NOT NULL,
     ClanTag VARCHAR(10) NOT NULL
 )
+
+CREATE TABLE ClanWarStars (
+    ID INTEGER PRIMARY KEY,
+    PlayerTag VARCHAR(10) NOT NULL,
+    ClanWarStars INTEGER NOT NULL
+)
+
 """

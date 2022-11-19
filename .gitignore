@@ -128,5 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+ClashInterface/SavedData/
+
 *.db
 tokens.json
+BotAdmins.json
+travismoment.py

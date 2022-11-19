@@ -36,6 +36,18 @@ def GetMembers(token, clan):
 
     return response
 
+def GetPlayerInfo(token, playerTag):
+    endpoint = f"players/%23{playerTag}"
+    fields = {"limit" : 50}
+    headers = {"Authorization" : f"Bearer {token}"}
+
+    response = _SendRequest(endpoint, fields, headers)
+
+    with open("ClashInterface/SavedData/PlayerInfo.json", "w") as f:
+        f.write(json.dumps(response))
+
+    return response
+
 def GetPreviousRaidWeekend(token, clan):
     endpoint = f"clans/%23{clan}/capitalraidseasons"
     fields = {"limit" : 1}
@@ -73,3 +85,5 @@ def GetClanInfo(token, clan):
 if __name__ == "__main__":
     with open("tokens.json", "r") as tokenFile:
         token = json.loads(tokenFile.read())["CoC"]["token"]
+
+    GetPreviousClanWar(token=token, clan="2PCJP0L0P")
