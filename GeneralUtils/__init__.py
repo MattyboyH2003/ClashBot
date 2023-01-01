@@ -10,6 +10,8 @@ async def GetLongest(*strs):
     else:
         return None
 
+
+# Big ass recursive sorting algorithm
 async def OrderClanMembers(clanMemberDetails : dict, sortKeys = ["trophies"]):
     #print("Ordering Clan Members")
     memberNames = list(clanMemberDetails.keys())
@@ -153,3 +155,25 @@ def GetLeagueID(playerData : dict):
                 return idx
 
     return 0 # Unranked or some other error that should'ntv'e happened also how do you spell should''nt'v'e ; Like This --> Shouldn't've :) ; thank you smile :)
+
+# Calculate the last clan games based on the datetime give
+def CalculateLastClanGames(date : str):
+    year = int(date[0:4])
+    month = int(date[5:7])
+    day = int(date[8:10])
+
+    if day >= 28: # This Month
+        return f"{year}-{month}-28 00:00:00"
+    else: # Last Month
+        if month > 1: # This Year
+            return f"{year}-{month-1}-28 00:00:00"
+        else: # Last Year
+            return f"{year-1}-12-28 00:00:00"
+
+def CalculateClanGamesBetween(updatedFor : str, lastClanGames : str) -> int:
+    yearDiff = int(updatedFor[0:4]) - int(lastClanGames[0:4])
+    monthDiff = int(updatedFor[5:7]) - int(lastClanGames[5:7])
+
+    totalDiff = 12*yearDiff + monthDiff
+
+    return -totalDiff

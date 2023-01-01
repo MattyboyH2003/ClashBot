@@ -60,12 +60,12 @@ def GetPreviousRaidWeekend(token, clan):
 
     return response
 
-def GetPreviousClanWar(token, clan):
-    endpoint = f"clans/%23{clan}/warlog"
-    fields = {"limit" : 1}
+def GetClanWar(token, clan):
+    endpoint = f"clans/%23{clan}/currentwar"
+    fields = {}
     headers = {"Authorization" : f"Bearer {token}"}
 
-    response = _SendRequest(endpoint, fields, headers)["items"]
+    response = _SendRequest(endpoint, fields, headers)
 
     with open("ClashInterface/SavedData/clanWar.json", "w") as f:
         f.write(json.dumps(response))
@@ -79,11 +79,20 @@ def GetClanInfo(token, clan):
 
     response = _SendRequest(endpoint, fields, headers)
 
+    return response
+
+def GetWarLog(token, clan):
+    endpoint = f"clans/%23{clan}/warlog"
+    fields = {}
+    headers = {"Authorization" : f"Bearer {token}"}
+
+    response = _SendRequest(endpoint, fields, headers)
+
+    with open("ClashInterface/SavedData/warLog.json", "w") as f:
+        f.write(json.dumps(response))
 
     return response
 
 if __name__ == "__main__":
     with open("tokens.json", "r") as tokenFile:
         token = json.loads(tokenFile.read())["CoC"]["token"]
-
-    GetPreviousClanWar(token=token, clan="2PCJP0L0P")

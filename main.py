@@ -1,6 +1,8 @@
 import copy
 import json
 import asyncio
+import time
+import datetime
 
 import discord
 from discord.ext import commands
@@ -23,7 +25,11 @@ with open("BotAdmins.json", "r") as adminFile:
 # - Command Base Functions - #
 ##############################
 
-async def _getMembers(msg : discord.Message):
+async def _getMembers(server, channel, *args, **kwargs):
+
+    if "interaction" in list(kwargs.keys()):
+        await kwargs["interaction"].response.send_message(content = "Getting Members!")
+
     emojisDict = {
         "wo0"       : "<:wo0:1043539783357579264>",
         "wo1"       : "<:wo1:1043539784926248960>",
@@ -47,8 +53,9 @@ async def _getMembers(msg : discord.Message):
         "tl8"       : "<:tl8:1043539834003800064>"
     }
     
-    clan = DatabaseTools.GetPrimaryClan(msg.guild.id)
+    clan = DatabaseTools.GetPrimaryClan(server.id)
     members = ClashInterface.GetMembers(tokens["CoC"]["token"], clan)
+    capRaidInfo = ClashInterface.GetPreviousRaidWeekend(tokens["CoC"]["token"], clan)["members"]
 
     fullMemberDetails = {}
 
@@ -56,6 +63,13 @@ async def _getMembers(msg : discord.Message):
         memberInfo = {}
         memberInfo["BasicInfo"] = member
         memberInfo["ProfileInfo"] = ClashInterface.GetPlayerInfo(tokens["CoC"]["token"], member["tag"].replace("#", ""))
+        
+        raidAttacks = 0
+        for raidMemberInfo in capRaidInfo:
+            if raidMemberInfo["tag"] == member["tag"]:
+                raidAttacks = raidMemberInfo["attacks"]
+
+        memberInfo["RaidAttacks"] = raidAttacks
 
         fullMemberDetails[member["name"]] = memberInfo
     
@@ -69,9 +83,9 @@ async def _getMembers(msg : discord.Message):
         messageSegment = "> "
         messageSegment += emojisDict["wo1"] if fullMemberDetails[memberName]["ProfileInfo"]["warPreference"] == "in" else emojisDict["wo0"]
         messageSegment += " `|` "
-        messageSegment += emojisDict["cw1"]
-        messageSegment += emojisDict["cg1"]
-        messageSegment += emojisDict["cc1"]
+        messageSegment += emojisDict["cw1"] if DatabaseTools.GetWarParticipation(fullMemberDetails[memberName]["BasicInfo"]["tag"][1:]) else emojisDict["cw0"]
+        messageSegment += emojisDict["cg1"] if DatabaseTools.GetClanGamesParticipation(fullMemberDetails[memberName]["BasicInfo"]["tag"][1:]) else emojisDict["cg0"]
+        messageSegment += emojisDict["cc1"] if fullMemberDetails[memberName]["RaidAttacks"] >= 5 else emojisDict["cc0"]
         messageSegment += " `|` "
         messageSegment += emojisDict["tl" + str(GeneralUtils.GetLeagueID(fullMemberDetails[memberName]["ProfileInfo"]))]
         messageSegment += " " + memberName
@@ -79,7 +93,7 @@ async def _getMembers(msg : discord.Message):
         messages[index//10] += messageSegment + "\n"
 
     for message in messages:
-        await msg.channel.send(message)
+        await channel.send(message)
 
 async def _getClanInfo(msg):
     clan = DatabaseTools.GetPrimaryClan(msg.guild.id)
@@ -100,7 +114,12 @@ async def _getCapRaid(msg):
     msgEmbed = discord.Embed(title=clanInfo["name"], description=f"Raid Weekend: {capRaidInfo['startTime'][6:8]}/{capRaidInfo['startTime'][4:6]}/{capRaidInfo['startTime'][0:4]}", colour=0xC22F43) # creating an embed for the help message
     msgEmbed.set_thumbnail(url=clanInfo["badgeUrls"]["small"]) # using the bot profile picture as an image on the embed
     msgEmbed.set_footer(text="Raid Weekend Info") # creating a footer for the embed
-    membersText = "".join([f"**{member['name']}** - {member['capitalResourcesLooted']} - {member['attacks']}/{member['attackLimit']+member['bonusAttackLimit']}\n" for member in sorted(capRaidInfo["members"], key=lambda a:a['capitalResourcesLooted'], reverse=True)])
+    membersText = "".join(
+        [
+            f"**{member['name']}** - {member['capitalResourcesLooted']} - {member['attacks']}/{member['attackLimit']+member['bonusAttackLimit']}\n" for member in sorted(capRaidInfo["members"], key=lambda a:a['capitalResourcesLooted'], reverse=True)
+        ]
+            
+    )
     
     msgEmbed.add_field(name="__Participants__", value=membersText, inline=False)
 
@@ -283,6 +302,35 @@ async def _linkClan(msg : discord.Message, clanID):
     else:
         await msg.send("Only administrators can run this command")
 
+async def _updateWarDetails():
+    pass
+
+async def _updateClanGamesDetails(msg : discord.message):
+    clan = DatabaseTools.GetPrimaryClan(msg.guild.id)
+    members = ClashInterface.GetMembers(tokens["CoC"]["token"], clan)
+
+    currentDate = datetime.datetime.utcfromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S") # Date&Time in the format YYYY-MM-DD HH:MM:SS.SSS
+    lastClanGames = GeneralUtils.CalculateLastClanGames(currentDate)
+
+    await msg.channel.send(f"Last Clan Games: {lastClanGames}")
+
+    membersDict = {}
+
+    for member in members:
+        membersDict[member["tag"][1:]] = member
+    
+    for memberTag in list(membersDict.keys()):
+        lastUpdated = DatabaseTools.GetClanGamesLastUpdate(memberTag)
+        updatedFor = GeneralUtils.CalculateLastClanGames(lastUpdated)
+
+        if updatedFor != lastClanGames:
+            monthDiff = GeneralUtils.CalculateClanGamesBetween(updatedFor, lastClanGames)
+
+            DatabaseTools.UpdateClanGamesInfo(memberTag, monthDiff)
+    
+    
+    
+    await msg.channel.send("Updated Clan Games Marks and Points")
 
 ########################
 # - General Commands - #
@@ -355,7 +403,15 @@ async def update(msg, item : str, *args):
 async def slashUpdateMembers(interaction: discord.Interaction):
     await _updateMembers(interaction.guild, interaction.channel, interaction = interaction)
 
-@bot.tree.context_menu(name = "Update Members")
+@bot.tree.command(name = "getmembers", description = "List the members in this servers linked clan") #, guild=discord.Object(id=1023939580963061850)
+async def slashGetMembers(interaction: discord.Interaction):
+    await _getMembers(interaction.guild, interaction.channel, interaction = interaction)
+
+#############################
+# - Context Menu Commands - #
+#############################
+
+#@bot.tree.context_menu(name = "Update Members")
 async def contextUpdateMembers(interaction: discord.Interaction, user: discord.Member):
     await _updateMembers(interaction.guild, interaction.channel, interaction = interaction)
 
@@ -364,8 +420,8 @@ async def contextUpdateMembers(interaction: discord.Interaction, user: discord.M
 #########################
 
 @bot.command()
-async def getMembers(msg):
-    await _getMembers(msg)
+async def getMembers(msg, *args):
+    await _getMembers(msg.guild, msg.channel, *args)
 
 @bot.command()
 async def getCapitalRaidInfo(msg):
@@ -399,13 +455,17 @@ async def getEmojis(msg, *args):
     if msg.author.id in [admins[adminName]["id"] for adminName in list(admins.keys())]:
         print(await msg.guild.fetch_emojis())
 
+@bot.command()
+async def updateClanGamesMarks(msg, *args):
+    await _updateClanGamesDetails(msg)
+
 ############################
 # - @bot.event functions - #
 ############################
 
-@bot.event
-async def on_command_error(msg, error): # Function that runs when an unidentified command is called
-    await msg.channel.send(error)
+#@bot.event
+#async def on_command_error(msg, error): # Function that runs when an unidentified command is called
+#    await msg.channel.send(error)
 
 @bot.event
 async def on_ready(): # Function that runs when bot goes online
@@ -425,6 +485,10 @@ async def on_ready(): # Function that runs when bot goes online
 
     # sync the slash comamnds
     await bot.tree.sync()
+    guild = bot.get_guild(1023939580963061850)
+    print(guild.name)
+    synced = await bot.tree.sync(guild=guild)
+    print(synced)
 
 bot.run(tokens["Discord"]["token"]) # Run the bot
 
