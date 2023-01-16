@@ -24,7 +24,7 @@ def CreateTable(cursorSQL : Cursor, tableName : str, fields : list) -> None:
 
     print("Table Created")
 
-def UpdateRecord(cursorSQL : Cursor, tableName : str, fields : list, data : list, condition : str = None):
+def UpdateRecord(cursorSQL : Cursor, tableName : str, fields : list, data : list, condition : str = None, conditionData : list = None):
     if len(fields) != len(data):
         raise ValueError(f"UPDATE command given {len(fields)} fields and {len(data)} data")
     
@@ -38,5 +38,5 @@ def UpdateRecord(cursorSQL : Cursor, tableName : str, fields : list, data : list
     
     print(query)
 
-    cursorSQL.execute(query, data)
+    cursorSQL.execute(query, data + conditionData)
 

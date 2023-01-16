@@ -2,7 +2,7 @@ import sqlite3
 import time
 import datetime
 
-from ClashInterface import GetPlayerInfo
+from ClashInterface import GetPlayerInfo, GetClanWar
 
 DATABASEFILE = "MainDatabase.db"
 
@@ -39,7 +39,7 @@ def GetPrimaryClan(serverID : int, databaseFile : str = DATABASEFILE) -> str:
 
     return result[0][0]
 
-# Individual Get Functions
+# Player Get Functions
 
 def GetWarParticipation(playerTag : str, databaseFile : str = DATABASEFILE) -> bool:
     # Opens connection to the database
@@ -171,7 +171,7 @@ def AddPlayerDefault(playerTag : str, databaseFile : str = DATABASEFILE) -> None
     connectionSQL.commit()
     connectionSQL.close()
 
-def UpdateClanGamesInfo(playerTag : str, monthDiff : int, databaseFile : str = DATABASEFILE) -> str:
+def UpdateClanGamesInfo(playerTag : str, monthDiff : int, databaseFile : str = DATABASEFILE) -> None:
     if monthDiff < 1:
         return
 
@@ -201,7 +201,19 @@ def UpdateClanGamesInfo(playerTag : str, monthDiff : int, databaseFile : str = D
     connectionSQL.commit()
     connectionSQL.close()
 
-    
+def UpdateWarMark(playerTag : str, newState : bool, databaseFile : str = DATABASEFILE) -> None:
+    # Opens connection to the database
+    connectionSQL = sqlite3.connect(databaseFile)
+    cursorSQL = connectionSQL.cursor() 
+
+    UpdateRecord(cursorSQL, "MemberDetails", ["ClanWarMark"], [newState], "PlayerTag = ?", [playerTag[1:]])
+
+    # Closes the connection to the database
+    cursorSQL.close()
+
+    connectionSQL.commit()
+    connectionSQL.close()
+
 
 ########################
 # - Hidden Functions - #

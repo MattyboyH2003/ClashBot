@@ -302,8 +302,36 @@ async def _linkClan(msg : discord.Message, clanID):
     else:
         await msg.send("Only administrators can run this command")
 
-async def _updateWarDetails():
-    pass
+async def _updateWarMarks(server, channel, *args, **kwargs):
+    clanTag = DatabaseTools.GetPrimaryClan(server.id)
+
+    warInfo = ClashInterface.GetClanWar(tokens["CoC"]["token"], clanTag)
+
+    if warInfo["state"] == "notInWar":
+        if "interaction" in list(kwargs.keys()):
+            await kwargs["interaction"].response.send_message(content = "I can't find a war to update marks from :(")
+        else:
+            await channel.send("I can't find a war to update marks from :(")
+        
+        return 
+
+    members = warInfo["clan"]["members"]
+
+    for member in members:
+        memberTag = member["tag"]
+        if "attacks" in list(member.keys()):
+            numberOfAttacks = len(member["attacks"])
+            starsEarnt = sum(attack["stars"] for attack in member["attacks"])
+        else:
+            numberOfAttacks = 0
+            starsEarnt = 0
+
+        DatabaseTools.UpdateWarMark(memberTag, numberOfAttacks == 2 and starsEarnt >= 4)
+    
+    if "interaction" in list(kwargs.keys()):
+        await kwargs["interaction"].response.send_message(content = "Updating War Marks")
+    else:
+        await channel.send("Updating War Marks")
 
 async def _updateClanGamesDetails(msg : discord.message):
     clan = DatabaseTools.GetPrimaryClan(msg.guild.id)
@@ -430,7 +458,7 @@ async def getCapitalRaidInfo(msg):
 @bot.command()
 async def getClanWarInfo(msg):
     clan = DatabaseTools.GetPrimaryClan(msg.guild.id)
-    newMessageContent = ClashInterface.GetPreviousClanWar(tokens["CoC"]["token"], clan)
+    newMessageContent = ClashInterface.GetClanWar(tokens["CoC"]["token"], clan)
 
     await msg.channel.send(newMessageContent)
 
@@ -459,6 +487,10 @@ async def getEmojis(msg, *args):
 async def updateClanGamesMarks(msg, *args):
     await _updateClanGamesDetails(msg)
 
+@bot.command()
+async def updateWarMarks(msg : discord.Message, *args):
+    await _updateWarMarks(msg.guild, msg.channel, *args)
+
 ############################
 # - @bot.event functions - #
 ############################
@@ -485,10 +517,6 @@ async def on_ready(): # Function that runs when bot goes online
 
     # sync the slash comamnds
     await bot.tree.sync()
-    guild = bot.get_guild(1023939580963061850)
-    print(guild.name)
-    synced = await bot.tree.sync(guild=guild)
-    print(synced)
 
 bot.run(tokens["Discord"]["token"]) # Run the bot
 
